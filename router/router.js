@@ -10,7 +10,7 @@ router.post('/signin',userController.userSignin)
 //contacts
 router.post('/addContact',verifyToken,contactsController.addContact) 
 router.get('/getContacts',verifyToken,contactsController.getContacts) 
-router.put('/editContact',verifyToken,contactsController.updateContact)
-router.delete('/deleteContact',verifyToken,contactsController.deleteContact)
+router.post('/editContact',verifyToken,contactsController.updateContact)
+router.post('/deleteContact',verifyToken,contactsController.deleteContact)
 
 module.exports = router;

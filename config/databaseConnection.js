@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
+
 const dotenv = require('dotenv');
 dotenv.config({path : '.env'});
+
 mongoose.set('strictQuery',false)
 
 const db = async () => {

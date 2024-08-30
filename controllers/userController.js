@@ -8,39 +8,40 @@ const MOBILE_REGEX = /^[0-9]{10}$/;
 const PWD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%*]).{8,24}$/;
 
 module.exports = {
-    userSignup: async (req, res) => {
+
+    userSignup: async (req,res) => {
+
+        console.log(req.body);
+        
         try {
-            if (!req.body.mobile || !req.body.password || !req.body.name) {
-                return res.status(400).json({ message: 'name, mobile, password - fields required' });
-            }
+            const { username, password } = req.body;
     
-            if (!USER_REGEX.test(req.body.name)) {
+            if (!username || !password) {
+                return res.status(400).json({ message: 'Username and password are required' });
+            }
+            
+            if (!USER_REGEX.test(username)) {
                 return res.status(400).json({
-                    message: 'name - "4 to 23 characters", "Must begin with a letter", "Letters, numbers, underscores, hyphens allowed."'
+                    message: 'Username must be 4 to 23 characters long, begin with a letter, and can include letters, numbers, underscores, and hyphens.'
+                });
+            }
+            
+            if (!PWD_REGEX.test(password)) {
+                return res.status(400).json({
+                    message: 'Password must be 8 to 24 characters long, and include uppercase and lowercase letters, a number, and a special character.'
                 });
             }
     
-            if (!PWD_REGEX.test(req.body.password)) {
-                return res.status(400).json({
-                    message: 'password - "8 to 24 characters", "Must include uppercase and lowercase letters, a number and a special character", "Allowed special characters: ! @ # * $ % "'
-                });
+            const existingUser = await users.findOne({ username });
+            if (existingUser) {
+                return res.status(409).json({ message: 'Username already exists' });
             }
     
-            if (!MOBILE_REGEX.test(req.body.mobile)) {
-                return res.status(400).json({ message: 'Enter a valid number.' });
-            }
-    
-            const response = await users.findOne({ name: req.body.name });
-    
-            if (response) {
-                return res.status(409).json({ message: 'User - already exists' });
-            }
-    
-            const hashedPassword = await bcrypt.hash(req.body.password, 10);
-            const createdUser = await users.create({ name: req.body.name, mobile: req.body.mobile, password: hashedPassword });
+            const hashedPassword = await bcrypt.hash(password, 10);
+            const createdUser = await users.create({ username, password: hashedPassword });
     
             const accessToken = jwt.sign({ id: createdUser._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-            res.status(201).json({ accessToken });
+            res.status(201).json({ message: 'Signup Success', accessToken });
         } catch (err) {
             console.error(err.message);
             res.status(500).json({ message: 'An error occurred', err: err.message });
@@ -48,19 +49,24 @@ module.exports = {
     },
     userSignin: async (req, res) => {
         try {
-            const { name, password } = req.body;
-            if (!name || !password) return res.status(400).json({ 'message': 'UserName and password required.' });
+            const { username, password } = req.body;
+            
+            if (!username || !password) {
+                return res.status(400).json({ message: 'Username and password are required.' });
+            }
     
-            const foundUser = await users.findOne({ name });
-            if (!foundUser) return res.status(401).json({ message: 'incorrect UserName or password' }); // Unauthorized
+            const foundUser = await users.findOne({ username });
+            if (!foundUser) {
+                return res.status(401).json({ message: 'Incorrect username or password.' }); // Unauthorized
+            }
     
-            const response = await bcrypt.compare(password, foundUser.password);
+            const isPasswordCorrect = await bcrypt.compare(password, foundUser.password);
     
-            if (response) {
+            if (isPasswordCorrect) {
                 const accessToken = jwt.sign({ id: foundUser._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-                res.status(200).json({ accessToken, name: foundUser.name, mobile: foundUser.mobile });
+                res.status(200).json({ accessToken, username: foundUser.username });
             } else {
-                res.status(401).json({ message: 'incorrect mobile number or password' });
+                res.status(401).json({ message: 'Incorrect username or password.' });
             }
         } catch (err) {
             console.error(err.message);
